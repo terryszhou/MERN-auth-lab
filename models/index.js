@@ -16,4 +16,7 @@ const connect = () => {
     db.on('error', err => log(err))
 }
 
-module.exports = { connect }
+module.exports = {
+    connect,
+    User: mongoose.model('user', require('./User.js'))
+}
