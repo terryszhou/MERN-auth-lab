@@ -3,6 +3,7 @@ const router = require('express').Router()
 const db = require('../../models')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
+const authLockedRoute = require('./authLockedRoute')
 
 const log = console.log
 
@@ -16,19 +17,19 @@ router.get('/', (req, res) => {
 // POST /users/register -- CREATE/register a new user
 router.post('/register', async (req, res) => {
     try {
-        // check user
+        // 1. check user
         const findUser = await db.User.findOne({
             email: req.body.email
         })
-        // if (user), !register
+        // 2. if (user), !register
         if (findUser) return res.status(400).json({ msg: "User already exists." })
 
-        // hash password from req.body
+        // 3. hash password from req.body
         const password = req.body.password
         const salt = 12
         const hashedPassword = await bcrypt.hash(password, salt)
 
-        // create new user
+        // 4. create new user
         const newUser = db.User({
             name: req.body.name,
             email: req.body.email,
@@ -36,14 +37,14 @@ router.post('/register', async (req, res) => {
         })
         await newUser.save()
 
-        // create jwt payload
+        // 5. create jwt payload
         const payload = {
             name: newUser.name,
             email: newUser.email,
             id: newUser.id
         }
 
-        // sign jwt, send response
+        // 6. sign jwt, send response
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 60 * 60 })
         res.json({ token })
 
@@ -56,30 +57,30 @@ router.post('/register', async (req, res) => {
 // POST /users/login -- validate login credentials
 router.post('/login', async (req, res) => {
     try {
-        // find user in db
+        // 1. find user in db
         const findUser = await db.User.findOne({
             email: req.body.email
         })
 
         const validFail = "Incorrect Username or Password"
 
-        // if (!user) go back
+        // 2. if (!user) go back
         if(!findUser) return res.status(400).json({ msg: validFail })
 
-        // check user's password
+        // 3. check user's password
         const match = await bcrypt.compare(req.body.password, findUser.password)
 
-        // if !password go back
+        // 4. if !password go back
         if(!match) return res.status(400).json({ msg: validFail })
 
-        // create jwt payload
+        // 5. create jwt payload
         const payload = {
             name: findUser.name,
             email: findUser.email,
             id: findUser.id
         }
 
-        // sign jwt, send response
+        // 6. sign jwt, send response
         const token = await jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 60 * 60 })
         res.json({ token })
 
@@ -89,10 +90,11 @@ router.post('/login', async (req, res) => {
     }
 })
 
-
 // GET /auth-locked -- redirect if bad jwt is found
-
-
+router.get('/auth-locked', authLockedRoute, (req, res) => {
+    log(res.locals.user)
+    res.json({ msg: "AUTHORIZATION LOCKED" })
+})
 
 // EXPORT - - - - - - - - - - - - - - - - -
 module.exports = router
